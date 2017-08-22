@@ -16,7 +16,7 @@ $ go get -u github.com/aristofanio/eventbus
 ## Example of use
 
 Start server in host=localhost and port=9090:
-```
+```Go
 package main
 
 import "github.com/aristofanio/eventbus"
@@ -34,7 +34,7 @@ func main() {
 ```
 
 An listener:
-```
+```Go
 package main
 
 import "github.com/aristofanio/eventbus"
@@ -56,7 +56,7 @@ func main() {
 ```
 
 An Notifier:
-```
+```Go
 package main
 
 import "github.com/aristofanio/eventbus"
