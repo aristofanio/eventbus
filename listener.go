@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"log"
 	"net"
 )
 
@@ -18,23 +19,37 @@ type Listener interface {
 }
 
 type listenerImpl struct {
-	UUID string
-	Conn net.Conn
+	UUID string    `json:"uuid"`
+	Type EventType `json:"type"`
+	Conn net.Conn  `json:"-"`
 }
 
 //--------------------------------------------------
 // Methods
 //--------------------------------------------------
 
-func (ln *listenerImpl) On(e EventType, callback Callback) error {
+func (ln *listenerImpl) On(t EventType, callback Callback) error {
 	//
-	frameOut := NewFrame(RegReqFrameType, []byte(ln.UUID))
-	err := WriteFrame(ln.Conn, &frameOut)
-	if err != nil {
-		return err
+	ln.Type = t
+	//
+	buf := bytes.NewBuffer([]byte{})
+	encoder := json.NewEncoder(buf)
+	err0 := encoder.Encode(ln)
+	if err0 != nil {
+		return err0
+	}
+	//log
+	log.Printf("Registering listener %s on %s", ln.UUID, ln.Type.Name)
+	//
+	frameOut := NewFrame(RegReqFrameType, buf.Bytes())
+	err1 := WriteFrame(ln.Conn, &frameOut)
+	if err1 != nil {
+		return err1
 	}
 	//
 	for {
+		//
+		log.Printf("Waiting event %s", ln.Type.Name)
 		//
 		frameIn, err := ReadFrame(ln.Conn)
 		if err != nil {
@@ -43,6 +58,7 @@ func (ln *listenerImpl) On(e EventType, callback Callback) error {
 		//
 		switch frameIn.Type {
 		case RegRespFrameType:
+			//
 			databuf := bytes.NewBuffer(frameIn.Data)
 			decoder := json.NewDecoder(databuf)
 			eventdt := new(Event)
@@ -50,6 +66,9 @@ func (ln *listenerImpl) On(e EventType, callback Callback) error {
 			if err != nil {
 				return err
 			}
+			//
+			log.Printf("Callback...")
+			//
 			callback(*eventdt)
 		case PngReqFrameType:
 			frameResp := NewFrame(PngRespFrameType, []byte{})

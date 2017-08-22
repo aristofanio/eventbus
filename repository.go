@@ -1,7 +1,7 @@
 package eventbus
 
 import (
-	"net"
+	"log"
 	"sync"
 )
 
@@ -10,41 +10,50 @@ import (
 //--------------------------------------------------
 
 type Repository interface {
-	Keep(uuid string, conn net.Conn)
-	Find(uuid string) net.Conn
+	Keep(typ EventType, ln listenerImpl)
+	Find(typ EventType) []listenerImpl
 	Remove(uuid string)
 }
 
 type repositoryInst struct {
-	lns map[string]net.Conn
+	listeners map[EventType][]listenerImpl
 }
 
 //--------------------------------------------------
 // Methods
 //--------------------------------------------------
 
-func (r *repositoryInst) Keep(uuid string, conn net.Conn) {
+func (r *repositoryInst) Keep(typ EventType, ln listenerImpl) {
+	//log
+	log.Printf("Persisting listener %s on %s", ln.UUID, ln.Type.Name)
 	//
-	if r.lns[uuid] != nil {
-		c := r.lns[uuid]
-		c.Close()
-	}
-	//
-	r.lns[uuid] = conn
+	r.listeners[typ] = append(r.listeners[typ], ln)
 }
 
-func (r *repositoryInst) Find(uuid string) net.Conn {
-	return r.lns[uuid]
+func (r *repositoryInst) Find(typ EventType) []listenerImpl {
+	//log
+	log.Printf("Finding listener for %s", typ.Name)
+	//
+	return r.listeners[typ]
 }
 
 func (r *repositoryInst) Remove(uuid string) {
+	//log
+	log.Printf("Removing listener %s", uuid)
 	//
-	if r.lns[uuid] != nil {
-		c := r.lns[uuid]
-		c.Close()
+	for k, vs := range r.listeners {
+		vsnew := make([]listenerImpl, 0)
+		for i := 0; i < len(vs); i++ {
+			v := vs[i]
+			if v.UUID == uuid {
+				v.Conn.Close()
+				continue
+			} else {
+				vsnew = append(vsnew, v)
+			}
+		}
+		r.listeners[k] = vsnew
 	}
-	//
-	r.lns[uuid] = nil
 }
 
 //--------------------------------------------------
@@ -57,7 +66,7 @@ var repOnce = new(sync.Once)
 func GetRepositoryInst() Repository {
 	repOnce.Do(func() {
 		repInst = new(repositoryInst)
-		repInst.lns = make(map[string]net.Conn)
+		repInst.listeners = make(map[EventType][]listenerImpl)
 	})
 	return repInst
 }

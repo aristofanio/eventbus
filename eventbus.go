@@ -10,6 +10,7 @@ import (
 // EventBus
 //--------------------------------------------------
 
+//EventBus represents endpoint
 type EventBus interface {
 	Start() error
 	Stop() error
@@ -25,6 +26,7 @@ type eventBusImpl struct {
 // Methods
 //--------------------------------------------------
 
+//Start start EventBus server
 func (bus *eventBusImpl) Start() error {
 	//log
 	log.Printf("Staring EventBus")
@@ -44,6 +46,7 @@ func (bus *eventBusImpl) Start() error {
 	}
 }
 
+//Stop stop EventBus server
 func (bus *eventBusImpl) Stop() error {
 	return bus.listen.Close()
 }
@@ -52,6 +55,8 @@ func (bus *eventBusImpl) Stop() error {
 // Public Operations
 //--------------------------------------------------
 
+//NewEventBus create an new EventBus in host and port. Error is
+//not nil if net.Listen throw error
 func NewEventBus(host string, port int) (EventBus, error) {
 	//log
 	log.Printf("Instance EventBus in %s:%d", host, port)
