@@ -19,6 +19,7 @@ type storageInst struct {
 // Methods
 //--------------------------------------------------
 
+//StoreEvent store events in memory
 func (s *storageInst) StoreEvent(e *Event) error {
 	es := s.events[e.Type]
 	es = append(es, e)
@@ -26,6 +27,7 @@ func (s *storageInst) StoreEvent(e *Event) error {
 	return nil
 }
 
+//ListEvents list all event in memory filtered by type t
 func (s *storageInst) ListEvents(t EventType) ([]*Event, error) {
 	return s.events[t], nil
 }
@@ -37,6 +39,7 @@ func (s *storageInst) ListEvents(t EventType) ([]*Event, error) {
 var stoInst *storageInst
 var stoOnce = new(sync.Once)
 
+//GetStorageInst get events store instance
 func GetStorageInst() Storage {
 	stoOnce.Do(func() {
 		stoInst = new(storageInst)

@@ -3,7 +3,7 @@ EventBus is an simple messaging system in publisher-subscriber style.
 
 ## Fases
 
-[![Codeship](https://img.shields.io/codeship/d6c1ddd0-16a3-0132-5f85-2e35c05e22b1.svg?style=plastic)]()
+[![Build Status](http://img.shields.io/travis/badges/badgerbadgerbadger.svg?style=flat-square)]()
 
 
 ## Use
@@ -37,22 +37,26 @@ An listener:
 ```Go
 package main
 
-import "github.com/aristofanio/eventbus"
+import (
+	"github.com/aristofanio/eventbus"
+	"io/ioutil"
+	"log"
+	"os"
+)
 
 func main() {
-	//
-	listener, err := eventbus.NewListener("ln-019101", "localhost", 9090)
+	//start listener
+	l, err := eventbus.NewListener("localhost", 9090, "ln-019101")
 	if err != nil {
 		println(err.Error())
 	}
-	//
-	listener.On(eventbus.EventType{"onTest"}, func(e eventbus.Event) {
-		println(e.Type.Name)
+	//registry (non-blocking)
+	l.On(eventbus.EventType{"onTest"}, func(e *eventbus.Event, err error) {
+		log.Printf("---> result: [type: %s, data: %s]", e.Type, string(e.Data))
 	})
-	//
-	println("opa")
+	//for avoid inexpected end
+	ioutil.ReadAll(os.Stdin)
 }
-
 ```
 
 An Notifier:

@@ -10,27 +10,29 @@ import (
 //--------------------------------------------------
 
 type Repository interface {
-	Keep(typ EventType, ln listenerImpl)
-	Find(typ EventType) []listenerImpl
+	Keep(typ EventType, l Listener)
+	Find(typ EventType) []Listener
 	Remove(uuid string)
 }
 
 type repositoryInst struct {
-	listeners map[EventType][]listenerImpl
+	listeners map[EventType][]Listener
 }
 
 //--------------------------------------------------
 // Methods
 //--------------------------------------------------
 
-func (r *repositoryInst) Keep(typ EventType, ln listenerImpl) {
+func (r *repositoryInst) Keep(typ EventType, ln Listener) {
+	//listener impl
+	l := ln.(*listenerImpl)
 	//log
-	log.Printf("Persisting listener %s on %s", ln.UUID, ln.Type.Name)
-	//
+	log.Printf("Persisting listener %s on %s", l.UUID, l.Type.Name)
+	//add listeners
 	r.listeners[typ] = append(r.listeners[typ], ln)
 }
 
-func (r *repositoryInst) Find(typ EventType) []listenerImpl {
+func (r *repositoryInst) Find(typ EventType) []Listener {
 	//log
 	log.Printf("Finding listener for %s", typ.Name)
 	//
@@ -40,19 +42,21 @@ func (r *repositoryInst) Find(typ EventType) []listenerImpl {
 func (r *repositoryInst) Remove(uuid string) {
 	//log
 	log.Printf("Removing listener %s", uuid)
-	//
-	for k, vs := range r.listeners {
-		vsnew := make([]listenerImpl, 0)
-		for i := 0; i < len(vs); i++ {
-			v := vs[i]
-			if v.UUID == uuid {
-				v.Conn.Close()
+	//seek in listeners
+	for k, la := range r.listeners {
+		//create new listener arrays
+		lanew := make([]Listener, 0)
+		//seek of 0 to len(vs)
+		for i := 0; i < len(la); i++ {
+			l := la[i].(*listenerImpl)
+			if l.UUID == uuid {
+				l.Conn.Close()
 				continue
 			} else {
-				vsnew = append(vsnew, v)
+				lanew = append(lanew, l)
 			}
 		}
-		r.listeners[k] = vsnew
+		r.listeners[k] = lanew
 	}
 }
 
@@ -66,7 +70,7 @@ var repOnce = new(sync.Once)
 func GetRepositoryInst() Repository {
 	repOnce.Do(func() {
 		repInst = new(repositoryInst)
-		repInst.listeners = make(map[EventType][]listenerImpl)
+		repInst.listeners = make(map[EventType][]Listener)
 	})
 	return repInst
 }

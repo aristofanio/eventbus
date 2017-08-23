@@ -2,7 +2,6 @@ package eventbus
 
 import (
 	"bytes"
-	"encoding/json"
 	"log"
 	"net"
 )
@@ -27,33 +26,30 @@ func (w connWorkerImpl) Run() error {
 	//log
 	log.Printf("Running...")
 	//read frame
-	frame, err := ReadFrame(w.conn)
+	frameIn, err := ReadFrame(w.conn)
 	if err != nil {
 		w.conn.Close()
 		return err
 	}
 	//log
-	log.Printf("Running...")
+	log.Printf("Convert to frame with size %d and type 0x%x: %s", frameIn.Size, frameIn.Type, frameIn.Data)
 	//verificar o tipo
-	switch frame.Type {
+	switch frameIn.Type {
 	case RegReqFrameType:
 		//registration req  (listener)
 		//se for listener,
 		//  - recuperar o tipo de evento desejado
 		//  - armazenar a conexão de acordo com um tipo de evento
-		lsn := new(listenerImpl)
-		buf := bytes.NewBuffer(frame.Data)
-		dec := json.NewDecoder(buf)
-		err := dec.Decode(lsn)
+		ln, err := toListener(w.conn, frameIn.Data)
 		if err != nil {
 			return err
 		}
-		lsn.Conn = w.conn
+		l := ln.(*listenerImpl)
 		//log
-		log.Printf("Get repository and keep listener")
-		//
+		log.Printf("Get repository and keep listener %s", l.UUID)
+		//repository
 		rep := GetRepositoryInst()
-		rep.Keep(lsn.Type, *lsn)
+		rep.Keep(l.Type, l)
 	case EvtReqFrameType:
 		//event req (notifier)
 		//se for notifier,
@@ -64,40 +60,49 @@ func (w connWorkerImpl) Run() error {
 		//  - recuperar o código de registro do evento
 		//  - delegar para o notificador local
 		defer w.conn.Close()
-		event, err := unmarshalEvent(frame.Data)
-		//log
-		log.Printf("Receving event type %s", event.Type.Name)
-		//
+		e, err := toEvent(frameIn.Data)
 		if err != nil {
 			//log
 			log.Printf("Error on receving event type")
-			//resp K - OK, D - Event, P - Ping and E - ERROR
-			b := make([]byte, 0)
-			buf := bytes.NewBuffer(b)
+			//create response data
+			byt := make([]byte, 0)
+			buf := bytes.NewBuffer(byt)
 			buf.WriteByte('E')
 			buf.WriteString(err.Error())
-			frame := NewFrame(EvtRespFrameType, buf.Bytes())
-			WriteFrame(w.conn, &frame) //todo convert to json-data
+			//log
+			log.Printf("Error: %s", buf.Bytes())
+			//create frame
+			frameOut := NewFrame(EvtRespFrameType, buf.Bytes())
+			//write in conn (error)
+			WriteFrame(w.conn, frameOut) //todo convert to json-data
 		} else {
 			//log
-			log.Printf("Storing event type")
-			//
+			log.Printf("Receiving event type %s", e.Type.Name)
+			//get event store instance
 			sto := GetStorageInst()
-			sto.StoreEvent(event)
-			//
-			log.Printf("Notifing...")
-			//
+			sto.StoreEvent(e)
+			//log
+			log.Printf("Storing event type")
+			//create frame
 			frame := NewFrame(EvtRespFrameType, []byte{'K'})
-			WriteFrame(w.conn, &frame) //todo convert to json-data
-			//
+			//log
+			log.Printf("Notifing...")
+			//write in conn (ok)
+			WriteFrame(w.conn, frame)
+			//create observe worker
 			rep := GetRepositoryInst()
-			obsWorker := NewObserverWorker(rep)
-			obsWorker.Notify(*event)
+			obs := NewObserverWorker(rep)
+			obs.Notify(e)
 		}
 	case PngReqFrameType:
+		//log
+		log.Printf("FrameType: PngReqFrameType")
 		//ping req (notifier | listener)
 		//todo ping
 	default:
+		//log
+		log.Printf("FrameType: unknown")
+		//close connection
 		w.conn.Close()
 	}
 	//

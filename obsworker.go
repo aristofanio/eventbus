@@ -1,8 +1,6 @@
 package eventbus
 
 import (
-	"bytes"
-	"encoding/json"
 	"log"
 )
 
@@ -11,7 +9,7 @@ import (
 //--------------------------------------------------
 
 type ObserverWorker interface {
-	Notify(e Event)
+	Notify(e *Event)
 }
 
 type observerWorkerImpl struct {
@@ -22,28 +20,21 @@ type observerWorkerImpl struct {
 // Methods
 //--------------------------------------------------
 
-func (o *observerWorkerImpl) Notify(e Event) {
-	listeners := o.rep.Find(e.Type)
-	for i := 0; i < len(listeners); i++ {
-		//
-		buf := bytes.NewBuffer([]byte{})
-		enc := json.NewEncoder(buf)
-		err := enc.Encode(e)
+func (o *observerWorkerImpl) Notify(e *Event) {
+	la := o.rep.Find(e.Type)
+	for i := 0; i < len(la); i++ {
+		//convert event to bytes
+		b, err := fromEvent(e)
 		if err != nil {
-			log.Printf("Error on notify %s", e.Type.Name)
-			continue
+			log.Printf("Error on notify listener about %s event", e.Type.Name)
 		}
-		//
-		l := listeners[i]
-		if l.Conn == nil {
-			log.Printf("Listener = nil (%d/%d)", i, len(listeners))
-		}
-		n, err := l.Conn.Write(buf.Bytes())
+		//create frame
+		frameOut := NewFrame(RegRespFrameType, b)
+		//write in listener
+		l := la[i].(*listenerImpl)
+		err = WriteFrame(l.Conn, frameOut)
 		if err != nil {
 			log.Printf("Error on write notification %s", e.Type.Name)
-		}
-		if n == 0 {
-			o.rep.Remove(l.UUID)
 		}
 	}
 }

@@ -68,21 +68,33 @@ func _read(r io.Reader, s int) ([]byte, error) {
 	result := make([]byte, 0, s)
 	//count received
 	count := 0
+	remaining := s
+	//
 	for {
+		//log
+		log.Printf("--start the reading of %d bytes", remaining)
 		//
-		input := make([]byte, s)
+		input := make([]byte, remaining)
 		c, err := r.Read(input)
 		if err != nil {
 			return nil, err
 		}
+		//log
+		log.Printf("--read %d bytes", c)
+		//
 		if c == 0 {
 			return nil, errors.New("Closed connection, EOF stream or badly formatted data")
 		}
 		//
 		result = append(result, input[:c]...)
 		count += c
+		remaining = (s - count)
+		//log
+		log.Printf("--remaining: %d bytes / count: %d bytes", remaining, count)
 		//
-		if count >= s {
+		if remaining == 0 {
+			//log
+			log.Printf("--end read")
 			break
 		}
 	}
@@ -91,6 +103,8 @@ func _read(r io.Reader, s int) ([]byte, error) {
 }
 
 func _readFrame(r io.Reader) (*Frame, error) {
+	//log
+	log.Printf("Start reading...")
 	//read 2 bytes
 	bs, err := _read(r, 2)
 	if err != nil {
@@ -100,28 +114,40 @@ func _readFrame(r io.Reader) (*Frame, error) {
 	t := rtype(bs[0], bs[1])
 	s := rsize(bs[0], bs[1])
 	//log
-	log.Printf("Reading initial 2 bytes: 0x%x", bs)
+	log.Printf("Head: t=0x%x; s=%d(bytes)", t, s)
 	//data
 	dt, err := _read(r, s)
 	if err != nil {
 		return nil, err
 	}
 	//log
-	log.Printf("Reading data with %d bytes: %s", s, dt)
-	//
+	log.Printf("Body: d=%s", dt)
+	//create frame
 	fr := new(Frame)
 	fr.Type = t
 	fr.Size = s
 	fr.Data = dt
+	//log
+	log.Printf("Stop reading...")
 	//result
 	return fr, nil
 }
 
 func _writeFrame(w io.Writer, f *Frame) error {
+	//log
+	log.Printf("Start writing...")
 	//write 2 bytes
 	bs := wtypesize(f.Type, f.Size)
+	//log
+	log.Printf("Head: t=0x%x; s=%d(bytes)", f.Type, f.Size)
+	//
 	w.Write(bs)
+	//log
+	log.Printf("Body: d=%s", f.Data)
+	//
 	w.Write(f.Data)
+	//log
+	log.Printf("Stop writing...")
 	return nil
 }
 
@@ -129,9 +155,8 @@ func _writeFrame(w io.Writer, f *Frame) error {
 // Public Operations
 //--------------------------------------------------
 
-func NewFrame(t int, b []byte) Frame {
-	f := Frame{Type: t, Size: len(b), Data: b}
-	return f
+func NewFrame(t int, b []byte) *Frame {
+	return &Frame{Type: t, Size: len(b), Data: b}
 }
 
 func ReadFrame(conn net.Conn) (*Frame, error) {

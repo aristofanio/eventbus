@@ -1,8 +1,6 @@
 package eventbus
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"net"
 )
@@ -12,7 +10,7 @@ import (
 //--------------------------------------------------
 
 type Notifier interface {
-	Notify(event Event) error
+	Notify(e *Event) error
 }
 
 type notifierImpl struct {
@@ -24,36 +22,35 @@ type notifierImpl struct {
 // Methods
 //--------------------------------------------------
 
-func (n *notifierImpl) Notify(event Event) error {
-	//
+func (n *notifierImpl) Notify(e *Event) error {
+	//setup conn
 	addr := net.TCPAddr{Port: n.port, IP: net.ParseIP(n.host)}
 	conn, err := net.Dial("tcp", addr.String())
 	if err != nil {
 		return err
 	}
-	//
-	buf := bytes.NewBuffer([]byte{})
-	encoder := json.NewEncoder(buf)
-	err = encoder.Encode(event)
+	//convert event in bytes
+	b, err := fromEvent(e)
 	if err != nil {
 		return err
 	}
-	//
-	frameOut := NewFrame(EvtReqFrameType, buf.Bytes())
-	err = WriteFrame(conn, &frameOut)
+	//create frame
+	frameOut := NewFrame(EvtReqFrameType, b)
+	//write frame in conn
+	err = WriteFrame(conn, frameOut)
 	if err != nil {
 		return err
 	}
-	//
+	//read response (error ou ok)
 	frameIn, err := ReadFrame(conn)
 	if err != nil {
 		return err
 	}
-	//
+	//check if exists error
 	if frameIn.Type == ErrRespFrameType {
 		return errors.New(string(frameIn.Data))
 	}
-	//
+	//result
 	return nil
 }
 

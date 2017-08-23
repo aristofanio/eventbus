@@ -23,7 +23,7 @@ type EventType struct {
 // Private Operations
 //--------------------------------------------------
 
-func unmarshalEvent(buf []byte) (*Event, error) {
+func toEvent(buf []byte) (*Event, error) {
 	buffer := bytes.NewBuffer(buf)
 	dec := json.NewDecoder(buffer)
 	evn := new(Event)
@@ -32,4 +32,15 @@ func unmarshalEvent(buf []byte) (*Event, error) {
 		return nil, err
 	}
 	return evn, nil
+}
+
+func fromEvent(e *Event) ([]byte, error) {
+	byt := make([]byte, 0)
+	buf := bytes.NewBuffer(byt)
+	enc := json.NewEncoder(buf)
+	err := enc.Encode(e)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
