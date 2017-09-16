@@ -1,7 +1,7 @@
 # EventBus
 EventBus is an simple messaging system in publisher-subscriber style.
 
-## Fases
+## Progress
 
 [![Build Status](http://img.shields.io/travis/badges/badgerbadgerbadger.svg?style=flat-square)]()
 
@@ -81,3 +81,12 @@ func main() {
 }
 
 ```
+
+## Evolution
+
+* add tests
+* add doc for frame (motivation)
+* add doc about concurrency
+* create option to transport data in json or protobuf format
+
+This tasks were based in this [discussion](https://www.reddit.com/r/golang/comments/70fcck/code_review_simpleeventbus/).
