@@ -1,5 +1,5 @@
 # EventBus
-EventBus is an simple messaging system in publisher-subscriber style.
+EventBus is an simple messaging system in listener-notifier style.
 
 ## Progress
 
@@ -88,5 +88,7 @@ func main() {
 * add doc for frame (motivation)
 * add doc about concurrency
 * create option to transport data in json or protobuf format
+* refactory logger (use [reference](https://dave.cheney.net/2017/01/23/the-package-level-logger-anti-pattern))
 
 This tasks were based in this [discussion](https://www.reddit.com/r/golang/comments/70fcck/code_review_simpleeventbus/).
+Reference
